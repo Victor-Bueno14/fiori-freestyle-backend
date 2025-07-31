@@ -132,9 +132,74 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
 
 
   METHOD ovcabset_get_entity.
-    er_entity-ordemid = 1.
-    er_entity-criadopor = 'Victor'.
-    er_entity-datacriacao = '19700101000000'.
+
+    "Variável
+    DATA: ld_ordemid TYPE zovcab-ordemid.
+
+    "Estruturas
+    DATA: ls_key_tab LIKE LINE OF it_key_tab,
+          ls_cab     TYPE zovcab.
+
+    "Criação de um objeto para armazenar e retornar mesagens via oData.
+    DATA(lo_msg) = me->/iwbep/if_mgw_conv_srv_runtime~get_message_container( ).
+
+    "Leitura do parâmetro da chave primária de entrada (it_key_tab)
+    READ TABLE it_key_tab INTO ls_key_tab WITH KEY name = 'OrdemId'.
+
+    IF sy-subrc IS NOT INITIAL.
+
+      "Chama um método para armazenar a mensagem.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Id da ordem não informado'
+      ).
+
+      "Permite disparar uma exceção, ou seja, interromper o fluxo normal
+      "e sinalizar que ocrreu um erro.
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+
+    ENDIF.
+
+    ld_ordemid = ls_key_tab-value.
+
+    SELECT SINGLE * INTO ls_cab FROM zovcab WHERE ordemid = ld_ordemid.
+
+    IF sy-subrc IS INITIAL.
+
+      MOVE-CORRESPONDING ls_cab TO er_entity.
+
+      "Pelo nome dos campos serem diferentes, o move-corresponding não será efetivo,
+      "por isso é necessário atribuir manualmente
+      er_entity-criadopor = ls_cab-criacao_usuario.
+
+      "Pelo ls_cab trabalhar com o campo data e hora enquanto o entity-set trabalha com TIMESTAMP,
+      "é necessário realizar essa conversão de data e hora para TIMESTAMP.
+      CONVERT
+        DATE ls_cab-criacao_data
+        TIME ls_cab-criacao_hora
+        INTO TIME STAMP er_entity-datacriacao
+        TIME ZONE sy-zonlo.
+
+    ELSE.
+
+      "Chama um método para armazenar a mensagem.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Id da ordem não encontrado'
+      ).
+
+      "Permite disparar uma exceção, ou seja, interromper o fluxo normal
+      "e sinalizar que ocrreu um erro.
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+
+    ENDIF.
+
   ENDMETHOD.
 
 
@@ -234,8 +299,89 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
   endmethod.
 
 
-  method OVITEMSET_GET_ENTITY.
-  endmethod.
+  METHOD ovitemset_get_entity.
+
+    "Estruturas
+    DATA: ls_key_tab LIKE LINE OF it_key_tab,
+          ls_item    TYPE zovitem.
+
+    "Variável
+    DATA: ld_error   TYPE flag.
+
+    "Criação de um objeto para armazenar e retornar mesagens via oData.
+    DATA(lo_msg) = me->/iwbep/if_mgw_conv_srv_runtime~get_message_container( ).
+
+    "Leitura do parâmetro da chave primária OrdemId (it_key_tab)
+    READ TABLE it_key_tab INTO ls_key_tab WITH KEY name = 'OrdemId'.
+
+    IF sy-subrc IS NOT INITIAL.
+
+      ld_error = 'X'.
+
+      "Chama um método para armazenar a mensagem.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Id da ordem não informado'
+      ).
+
+    ENDIF.
+
+    ls_item-ordemid = ls_key_tab-value.
+
+    "Leitura do parâmetro da chave primária ItemId (it_key_tab)
+    READ TABLE it_key_tab INTO ls_key_tab WITH KEY name = 'ItemId'.
+
+    IF sy-subrc IS NOT INITIAL.
+
+      ld_error = 'X'.
+
+      "Chama um método para armazenar a mensagem.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Id do item não informado'
+      ).
+
+    ENDIF.
+
+    ls_item-itemid = ls_key_tab-value.
+
+    IF ld_error = 'X'.
+
+      "Permite disparar uma exceção, ou seja, interromper o fluxo normal
+      "e sinalizar que ocrreu um erro.
+
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+
+    ENDIF.
+
+    SELECT SINGLE * INTO ls_item FROM zovitem
+      WHERE ordemid = ls_item-ordemid
+        AND itemid  = ls_item-itemid.
+
+    IF sy-subrc IS INITIAL.
+
+      MOVE-CORRESPONDING ls_item TO er_entity.
+
+    ELSE.
+
+      "Chama um método para armazenar a mensagem.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Item não encontrado'
+      ).
+
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+
+    ENDIF.
+
+  ENDMETHOD.
 
 
   METHOD ovitemset_get_entityset.
