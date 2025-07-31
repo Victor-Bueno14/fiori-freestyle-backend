@@ -205,19 +205,64 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
 
   METHOD ovcabset_get_entityset.
 
-    "Tabela Interna
+    "Tabelas Internas
 
-    DATA: lt_cab TYPE STANDARD TABLE OF zovcab.
+    DATA: lt_cab       TYPE STANDARD TABLE OF zovcab,
+          lt_orderby   TYPE STANDARD TABLE OF string.
 
     "Estruturas
 
     DATA: ls_cab       TYPE zovcab.
 
+    "Variável
+    DATA: ld_orderby  TYPE string.
+
     "et_entityset é o parâmetro que serve para retornar a lista de registros solicitados.
     "Estrutura responsável em manipular o et_entityset.
     DATA: ls_entityset LIKE LINE OF et_entityset.
 
-    SELECT * INTO TABLE lt_cab FROM zovcab.
+    "it_order é o parâmetro responsável em armazenar a ordenação da requisição URI.
+    "Loop responsável em tratar alguns campos do it_order.
+    LOOP AT it_order INTO DATA(ls_order).
+
+      TRANSLATE ls_order-property TO UPPER CASE.
+
+      TRANSLATE ls_order-order TO UPPER CASE.
+
+      IF ls_order-order = 'DESC'.
+
+        ls_order-order = 'DESCENDING'.
+
+      ELSE.
+
+        ls_order-order = 'ASCENDING'.
+
+      ENDIF.
+
+      APPEND |{ ls_order-property } { ls_order-order } | TO lt_orderby.
+
+   ENDLOOP.
+
+   "Concatena todas as linhas que vierem do loop em uma única variável.
+   CONCATENATE LINES OF lt_orderby INTO ld_orderby SEPARATED BY ''.
+
+    "O parâmetro iv_filter_string possui as informações do que será filtrado
+    "na requisição oData.
+
+    "O parâmetro is_paging-top possui as informações sobre a paginição na
+    "requisição oData.
+
+    "O parâmetro is_paging-top possui as informações do limite do número máximo de linhas
+    "e o comando UP TO ROWS realiza essa limitação.
+
+    "O parâmetro is_paging-skip possui as informações de quantas linhas serão puladas
+    "e o comando OFFSER realiza esse pulo de linha.
+    SELECT * FROM zovcab
+      WHERE (iv_filter_string)
+       ORDER BY (ld_orderby)
+      INTO TABLE @lt_cab
+        UP TO @is_paging-top ROWS
+      OFFSET @is_paging-skip.
 
     LOOP AT lt_cab INTO ls_cab.
 
