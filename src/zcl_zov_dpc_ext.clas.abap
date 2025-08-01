@@ -246,6 +246,14 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
    "Concatena todas as linhas que vierem do loop em uma única variável.
    CONCATENATE LINES OF lt_orderby INTO ld_orderby SEPARATED BY ''.
 
+   "Ordenação obrigatório caso nenhma seja definida (Evitar o erro do OFFSET)
+
+   IF ld_orderby IS INITIAL.
+
+     ld_orderby = 'OrdemId ASCENDING'.
+
+   ENDIF.
+
     "O parâmetro iv_filter_string possui as informações do que será filtrado
     "na requisição oData.
 
@@ -288,8 +296,45 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
   ENDMETHOD.
 
 
-  method OVCABSET_UPDATE_ENTITY.
-  endmethod.
+  METHOD ovcabset_update_entity.
+
+    "Criação de um objeto para armazenar e retornar mesagens via oData.
+    DATA(lo_msg) = me->/iwbep/if_mgw_conv_srv_runtime~get_message_container( ).
+
+    "Os dados da requisição são copiados para o er_entity.
+    io_data_provider->read_entry_data(
+      IMPORTING
+        es_data = er_entity
+    ).
+
+    "Atribuição do campo chave OrdemId para o campo da entidade
+    er_entity-ordemid = it_key_tab[ name = 'OrdemId' ]-value.
+
+    UPDATE zovcab
+      SET  clienteid  = er_entity-clienteid
+           totalitens = er_entity-totalitens
+           totalfrete = er_entity-totalfrete
+           totalordem = er_entity-totalordem
+           status     = er_entity-status
+     WHERE ordemid    = er_entity-ordemid.
+
+    IF sy-subrc IS NOT INITIAL.
+
+      "Chama um método para armazenar a mensagem.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Erro ao atualizar ordem'
+       ).
+
+      "Permite disparar uma exceção, ou seja, interromper o fluxo normal
+      "e sinalizar que ocrreu um erro.
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+    ENDIF.
+
+  ENDMETHOD.
 
 
   METHOD ovitemset_create_entity.
@@ -479,6 +524,48 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
   ENDMETHOD.
 
 
-  method OVITEMSET_UPDATE_ENTITY.
-  endmethod.
+  METHOD ovitemset_update_entity.
+
+    "Criação de um objeto para armazenar e retornar mesagens via oData.
+    DATA(lo_msg) = me->/iwbep/if_mgw_conv_srv_runtime~get_message_container( ).
+
+    "Os dados da requisição são copiados para o er_entity.
+    io_data_provider->read_entry_data(
+      IMPORTING
+        es_data = er_entity
+    ).
+
+    "Atribuição de campos que podem não ser preenchidos no URI
+    er_entity-ordemid  = it_key_tab[ name = 'OrdemId' ]-value.
+
+    er_entity-itemid   = it_key_tab[ name = 'ItemId' ]-value.
+
+    er_entity-precotot = er_entity-quantidade * er_entity-precouni.
+
+    UPDATE zovitem
+      SET material   = er_entity-material
+          descricao  = er_entity-descricao
+          quantidade = er_entity-quantidade
+          precouni   = er_entity-precouni
+          precotot   = er_entity-precotot
+    WHERE ordemid    = er_entity-ordemid
+      AND itemid     = er_entity-itemid.
+
+    IF sy-subrc IS NOT INITIAL.
+
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Erro ao atualizar item'
+      ).
+
+      "Permite disparar uma exceção, ou seja, interromper o fluxo normal
+      "e sinalizar que ocrreu um erro.
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+
+    ENDIF.
+
+  ENDMETHOD.
 ENDCLASS.
