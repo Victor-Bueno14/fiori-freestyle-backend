@@ -127,8 +127,81 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
   ENDMETHOD.
 
 
-  method OVCABSET_DELETE_ENTITY.
-  endmethod.
+  METHOD ovcabset_delete_entity.
+
+    "Estrutura
+    DATA: ls_key_tab LIKE LINE OF it_key_tab.
+
+    "Criação de um objeto para armazenar e retornar mesagens via oData.
+    DATA(lo_msg) = me->/iwbep/if_mgw_conv_srv_runtime~get_message_container( ).
+
+    READ TABLE it_key_tab INTO ls_key_tab WITH KEY name = 'OrdemId'.
+
+    IF sy-subrc IS NOT INITIAL.
+
+      "Chama um método para armazenar a mensagem.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'OrdemId não informado'
+       ).
+
+      "Permite disparar uma exceção, ou seja, interromper o fluxo normal
+      "e sinalizar que ocrreu um erro.
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+
+    ENDIF.
+
+    "Exclusão dos Itens
+    DELETE FROM zovitem WHERE ordemid = ls_key_tab-value.
+
+    IF sy-subrc IS NOT INITIAL.
+
+      ROLLBACK WORK.
+
+      "Chama um método para armazenar a mensagem.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Erro ao remover itens'
+       ).
+
+      "Permite disparar uma exceção, ou seja, interromper o fluxo normal
+      "e sinalizar que ocrreu um erro.
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+
+    ENDIF.
+
+    "Exclusão do cabeçalho
+
+    DELETE FROM zovcab WHERE ordemid = ls_key_tab-value.
+
+        IF sy-subrc IS NOT INITIAL.
+
+      ROLLBACK WORK.
+
+      "Chama um método para armazenar a mensagem.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Erro ao remover cabeçalho'
+       ).
+
+      "Permite disparar uma exceção, ou seja, interromper o fluxo normal
+      "e sinalizar que ocrreu um erro.
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+
+    ENDIF.
+
+    COMMIT WORK AND WAIT.
+
+  ENDMETHOD.
 
 
   METHOD ovcabset_get_entity.
@@ -385,8 +458,41 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
   ENDMETHOD.
 
 
-  method OVITEMSET_DELETE_ENTITY.
-  endmethod.
+  METHOD ovitemset_delete_entity.
+
+    "Estruturas
+    DATA: ls_item    TYPE zovitem,
+          ls_key_tab LIKE LINE OF it_key_tab.
+
+    "Criação de um objeto para armazenar e retornar mesagens via oData.
+    DATA(lo_msg) = me->/iwbep/if_mgw_conv_srv_runtime~get_message_container( ).
+
+    ls_item-ordemid = it_key_tab[ name = 'OrdemId' ]-value.
+
+    ls_item-itemid  = it_key_tab[ name = 'ItemId' ]-value.
+
+    DELETE FROM zovitem
+      WHERE ordemid = ls_item-ordemid
+        AND itemid  = ls_item-itemid.
+
+    IF sy-subrc IS NOT INITIAL.
+
+      "Chama um método para armazenar a mensagem.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Erro ao remover item'
+       ).
+
+      "Permite disparar uma exceção, ou seja, interromper o fluxo normal
+      "e sinalizar que ocrreu um erro.
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg.
+
+    ENDIF.
+
+  ENDMETHOD.
 
 
   METHOD ovitemset_get_entity.
