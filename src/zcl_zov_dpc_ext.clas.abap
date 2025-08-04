@@ -239,10 +239,10 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
           lv_status  TYPE zovcab-status.
 
     "Tabela Interna
-    DATA: lt_bapiret2 TYPE STANDARD TABLE OF zcl_zov_mpc_ext=>ts_mensagem.
+    DATA: lt_bapiret2 TYPE STANDARD TABLE OF zcl_zov_mpc_ext=>mensagem2.
 
     "Estrutura
-    DATA: ls_bapiret2 TYPE zcl_zov_mpc_ext=>ts_mensagem.
+    DATA: ls_bapiret2 TYPE zcl_zov_mpc_ext=>mensagem2.
 
     "Condicional para verificar qual function import será executada.
     "O parâmetro iv_action_name possui o nome de qual function import foi solicitada.
@@ -261,9 +261,9 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
 
         CLEAR ls_bapiret2.
 
-        ls_bapiret2-type    = 'S'.
+        ls_bapiret2-tipo    = 'S'.
 
-        ls_bapiret2-message = 'Status atualizado'.
+        ls_bapiret2-mensagem = 'Status atualizado'.
 
         APPEND ls_bapiret2 TO lt_bapiret2.
 
@@ -271,9 +271,9 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
 
         CLEAR ls_bapiret2.
 
-        ls_bapiret2-type    = 'E'.
+        ls_bapiret2-tipo    = 'E'.
 
-        ls_bapiret2-message = 'Erro ao atualizar status'.
+        ls_bapiret2-mensagem = 'Erro ao atualizar status'.
 
         APPEND ls_bapiret2 TO lt_bapiret2.
 
