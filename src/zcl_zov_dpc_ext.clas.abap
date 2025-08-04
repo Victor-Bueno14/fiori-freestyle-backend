@@ -557,6 +557,9 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
 
   METHOD ovcabset_update_entity.
 
+    "Variável
+    DATA: lv_error TYPE flag.
+
     "Criação de um objeto para armazenar e retornar mesagens via oData.
     DATA(lo_msg) = me->/iwbep/if_mgw_conv_srv_runtime~get_message_container( ).
 
@@ -568,6 +571,47 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
 
     "Atribuição do campo chave OrdemId para o campo da entidade
     er_entity-ordemid = it_key_tab[ name = 'OrdemId' ]-value.
+
+    "Validações
+    IF er_entity-clienteid = 0.
+
+      lv_error = 'X'.
+
+      "Chama um método para armazenar a mensagem.
+      lo_msg->add_message_text_only(
+        EXPORTING
+          iv_msg_type = 'E'
+          iv_msg_text = 'Cliente vazio'
+       ).
+
+    ENDIF.
+
+    IF er_entity-totalordem < 10.
+
+      lv_error = 'X'.
+
+      "Chama um método para armazenar a mensagem
+      lo_msg->add_message(
+        EXPORTING
+          iv_msg_type   = 'E'
+          iv_msg_id     = 'ZOV'
+          iv_msg_number = 1
+          iv_msg_v1     = 'R$ 10,00'
+          iv_msg_v2     = |{ er_entity-ordemid }|
+      ).
+
+    ENDIF.
+
+    IF lv_error = 'X'.
+
+      "Permite disparar uma exceção, ou seja, interromper o fluxo normal
+      "e sinalizar que ocorreu um erro.
+      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+        EXPORTING
+          message_container = lo_msg
+          http_status_code  = 400.
+
+    ENDIF.
 
     UPDATE zovcab
       SET  clienteid  = er_entity-clienteid
@@ -587,7 +631,7 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
        ).
 
       "Permite disparar uma exceção, ou seja, interromper o fluxo normal
-      "e sinalizar que ocrreu um erro.
+      "e sinalizar que ocorreu um erro.
       RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
         EXPORTING
           message_container = lo_msg.
