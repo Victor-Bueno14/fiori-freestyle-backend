@@ -332,7 +332,7 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
 
     ls_cab-criacao_data    = sy-datum.
     ls_cab-criacao_hora    = sy-uzeit.
-    ls_cab-criacao_usuario = sy-uname.
+    "ls_cab-criacao_usuario = sy-uname.
 
     "Seleciona o último registro cadastrado.
     SELECT SINGLE MAX( ordemid )
@@ -375,6 +375,8 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
 
 
   METHOD ovcabset_delete_entity.
+    "Variavel
+    DATA: lv_count TYPE i.
 
     "Estrutura
     DATA: ls_key_tab LIKE LINE OF it_key_tab.
@@ -401,33 +403,38 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
 
     ENDIF.
 
-    "Exclusão dos Itens
-    DELETE FROM zovitem WHERE ordemid = ls_key_tab-value.
+    "Verifica se existem itens relacionados ao cabeçalho
+    SELECT COUNT(*) FROM zovitem WHERE ordemid = @ls_key_tab-value INTO @lv_count.
 
-    IF sy-subrc IS NOT INITIAL.
+    IF lv_count IS NOT INITIAL.
+      "Exclusão dos Itens
+      DELETE FROM zovitem WHERE ordemid = ls_key_tab-value.
 
-      ROLLBACK WORK.
+      IF sy-subrc IS NOT INITIAL.
 
-      "Chama um método para armazenar a mensagem.
-      lo_msg->add_message_text_only(
-        EXPORTING
-          iv_msg_type = 'E'
-          iv_msg_text = 'Erro ao remover itens'
-       ).
+        ROLLBACK WORK.
 
-      "Permite disparar uma exceção, ou seja, interromper o fluxo normal
-      "e sinalizar que ocrreu um erro.
-      RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
-        EXPORTING
-          message_container = lo_msg.
+        "Chama um método para armazenar a mensagem.
+        lo_msg->add_message_text_only(
+          EXPORTING
+            iv_msg_type = 'E'
+            iv_msg_text = 'Erro ao remover itens'
+         ).
 
+        "Permite disparar uma exceção, ou seja, interromper o fluxo normal
+        "e sinalizar que ocrreu um erro.
+        RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
+          EXPORTING
+            message_container = lo_msg.
+
+      ENDIF.
     ENDIF.
 
     "Exclusão do cabeçalho
 
     DELETE FROM zovcab WHERE ordemid = ls_key_tab-value.
 
-        IF sy-subrc IS NOT INITIAL.
+    IF sy-subrc IS NOT INITIAL.
 
       ROLLBACK WORK.
 
@@ -546,6 +553,16 @@ CLASS ZCL_ZOV_DPC_EXT IMPLEMENTATION.
     LOOP AT it_order INTO DATA(ls_order).
 
       TRANSLATE ls_order-property TO UPPER CASE.
+
+      IF ls_order-property EQ 'DATACRIACAO'.
+
+        ls_order-property = 'CRIACAO_DATA'.
+
+      ELSEIF ls_order-property EQ 'CRIADOPOR'.
+
+        ls_order-property = 'CRIACAO_USUARIO'.
+
+      ENDIF.
 
       TRANSLATE ls_order-order TO UPPER CASE.
 
